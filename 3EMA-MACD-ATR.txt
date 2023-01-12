@@ -1,0 +1,87 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+
+//@version=4
+strategy("3 Ema, Macd and ATR", overlay=true)
+
+//heikinashi_spy_30_close = security(heikinashi("SPY"), "30", close)
+
+ema1 = ema(close,20)
+ema2 = ema(close,50)
+ema3 = ema(close,200)
+plot(ema1, color=#ffac5a, title='1 ema', linewidth=1)
+plot(ema2, color=#ffeb3b, title='2 ema', linewidth=1)
+plot(ema3, color=#0094ff, title="3 ema", linewidth=1)
+
+// Bull or Bear according to 200 ema
+EMA200 = ema(close, input(200))
+
+// Rally according to 20 and 50 ema?
+EMA20 = ema(close, input(20))
+EMA50 = ema(close, input(50))
+
+// Getting inputs macd TEST
+fast_length = input(title="Fast Length", type=input.integer, defval=12)
+slow_length = input(title="Slow Length", type=input.integer, defval=26)
+src = input(title="Source", type=input.source, defval=close)
+signal_length = input(title="Signal Smoothing", type=input.integer, minval = 1, maxval = 50, defval = 9)
+sma_source = input(title="Simple MA(Oscillator)", type=input.bool, defval=false)
+sma_signal = input(title="Simple MA(Signal Line)", type=input.bool, defval=false)
+
+fast_ma = sma_source ? sma(src, fast_length) : ema(src, fast_length)
+slow_ma = sma_source ? sma(src, slow_length) : ema(src, slow_length)
+macd = fast_ma - slow_ma
+signal = sma_signal ? sma(macd, signal_length) : ema(macd, signal_length)
+hist = macd - signal
+
+// Average true range
+ATR = atr(14)
+
+
+strategy.entry("Buy", strategy.long, when = ((close>EMA200) and (close>EMA50) and (close>EMA20) and (EMA20>EMA50) and (EMA20>EMA200) and (EMA50>EMA200) and (crossover(macd, signal))))
+alertcondition(hist, title='Long', message='Buy')
+
+strategy.entry("Short", strategy.short, when = ((close<EMA200) and (close<EMA50) and (close<EMA20) and (EMA20<EMA50) and (EMA20<EMA200) and (EMA50<EMA200) and (crossunder(macd, signal))))
+alertcondition(hist, title="Short", message= "Short")
+
+
+// STOP LOSS AND TAKE PROFIT
+//stopPer = input(0.5, title='Stop Loss %', type=input.float)
+//takePer = input(1, title='Take Profit %', type=input.float) /100
+
+longStop = strategy.position_avg_price - (ATR*1)
+shortStop = strategy.position_avg_price + (ATR*1)
+shortTake = strategy.position_avg_price - (ATR*2)
+longTake = strategy.position_avg_price + (ATR*2)
+
+// Take profit or stop loss
+if strategy.position_size > 0 
+    strategy.exit(id="Close Long", stop=longStop, limit=longTake)
+if strategy.position_size < 0 
+    strategy.exit(id="Close Short", stop=shortStop, limit=shortTake)
+    
+//PLOT FIXED SLTP LINE
+plot(strategy.position_size > 0 ? longStop : na, style=plot.style_linebr, color=#b71c1c, linewidth=1, title="Long Fixed SL")
+plot(strategy.position_size < 0 ? shortStop : na, style=plot.style_linebr, color=#b71c1c, linewidth=1, title="Short Fixed SL")
+plot(strategy.position_size > 0 ? longTake : na, style=plot.style_linebr, color=color.green, linewidth=1, title="Long Take Profit")
+plot(strategy.position_size < 0 ? shortTake : na, style=plot.style_linebr, color=color.green, linewidth=1, title="Short Take Profit")
+
+// // STOP LOSS AND TAKE PROFIT
+// stopPer = input(1, title='Stop Loss %', type=input.float)
+// takePer = input(3, title='Take Profit %', type=input.float)
+
+// longStop = strategy.position_avg_price - stopPer
+// shortStop = strategy.position_avg_price + stopPer
+// shortTake = strategy.position_avg_price - takePer
+// longTake = strategy.position_avg_price + takePer
+
+// // Take profit or stop loss
+// if strategy.position_size > 0 
+//     strategy.exit(id="Close Long", stop=longStop, limit=longTake)
+// if strategy.position_size < 0 
+//     strategy.exit(id="Close Short", stop=shortStop, limit=shortTake)
+    
+// //PLOT FIXED SLTP LINE
+// plot(strategy.position_size > 0 ? longStop : na, style=plot.style_linebr, color=#b71c1c, linewidth=1, title="Long Fixed SL")
+// plot(strategy.position_size < 0 ? shortStop : na, style=plot.style_linebr, color=#b71c1c, linewidth=1, title="Short Fixed SL")
+// plot(strategy.position_size > 0 ? longTake : na, style=plot.style_linebr, color=color.green, linewidth=1, title="Long Take Profit")
+// plot(strategy.position_size < 0 ? shortTake : na, style=plot.style_linebr, color=color.green, linewidth=1, title="Short Take Profit")
